@@ -10,14 +10,17 @@
 #include "MathCore.h"
 #include "new.h"
 #include "PhySystem.h"
+#include <zconf.h>
 
 
 static void force_computation(Sys_t* _sys);
 static void border_collision(Sys_t* _sys);
 static void movement_solution(Sys_t* _sys);
-static void get_statistic(Sys_t* _sys);
+static void get_statistic(Sys_t* _sys, FILE* gnu);
 
 Sys_t* create_sys(size_t number_of_particles, double dt){
+    srand(time(NULL));
+
     Sys_t* result = calloc(1, sizeof(Sys_t));
     result->amount_of_particles = number_of_particles;
     result->dt = dt;
@@ -35,6 +38,7 @@ Sys_t* create_sys(size_t number_of_particles, double dt){
      */
 
     for(size_t i=0; i< number_of_particles; i++){
+
          x_cord = (double)rand()/RAND_MAX;
          y_cord = (double)rand()/RAND_MAX;
          v_x = (double)rand()/RAND_MAX * 10. - 5.;
@@ -58,6 +62,7 @@ double E_Kin(const Sys_t* _sys){
 }
 
 void RunSystem(Sys_t* _sys){
+    FILE * gnuplotPipe = popen ("gnuplot ", "w");
     while (1){
         /* расчет сил */
         force_computation(_sys);
@@ -69,7 +74,7 @@ void RunSystem(Sys_t* _sys){
         movement_solution(_sys);
 
         /* сбор статистики */
-        get_statistic( _sys);
+        get_statistic( _sys, gnuplotPipe);
 
     }
 }
@@ -104,17 +109,20 @@ static void border_collision(Sys_t* _sys){
         if (particle.coordinate->x + particle.velocity->x*dt > 1 ||
             particle.coordinate->x + particle.velocity->x*dt < 0
         ) {
-            particle.velocity->x *= -1;
             if (particle.coordinate->x + particle.velocity->x*dt > 1) particle.coordinate->x = 1;
             else particle.coordinate->x = 0;
+            particle.velocity->x *= -1;
         }
 
         if (particle.coordinate->y + particle.velocity->y*dt > 1 ||
             particle.coordinate->y + particle.velocity->y*dt < 0
         ){
-            particle.velocity->y *= -1;
-            if (particle.coordinate->y + particle.velocity->y*dt >1) particle.coordinate->y = 1;
+
+            if (particle.coordinate->y + particle.velocity->y*dt >1) {
+                particle.coordinate->y = 1;
+            }
             else particle.coordinate->y = 0;
+            particle.velocity->y *= -1;
         }
     }
 }
@@ -142,7 +150,24 @@ static void movement_solution(Sys_t* _sys){
 #undef NEW_VELOCITY
 }
 
-static void get_statistic(Sys_t* _sys){
+static void get_statistic(Sys_t* _sys, FILE* gnu){
     double K = E_Kin(_sys);
-    printf("%lf " , K);
+    printf("E = %lf \n" , K);
+    printf("coord_0 = {%lf, %lf}\n" , _sys->aptr->coordinate->x,_sys->aptr->coordinate->y);
+
+    FILE * gnuplotPipe = gnu ;popen ("gnuplot ", "w");
+    if (gnuplotPipe) {
+        fprintf(gnuplotPipe, "set xrange [0:1] \n");
+        fprintf(gnuplotPipe, "set yrange [0:1] \n");
+        fprintf(gnuplotPipe, "plot '-'\n");
+        for(size_t i=0; i<_sys->amount_of_particles; i++){
+            fprintf(gnuplotPipe, "%lf %lf \n", _sys->aptr[i].coordinate->x,
+                    _sys->aptr[i].coordinate->y);
+        }
+        fprintf(gnuplotPipe, "e\n");
+        fflush(gnuplotPipe);
+
+        fprintf(gnuplotPipe, "refresh\n");
+        //pclose(gnuplotPipe);
+    }
 }

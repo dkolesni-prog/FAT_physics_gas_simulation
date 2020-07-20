@@ -94,8 +94,8 @@ Vector2D LawOne(Atom_t* dest, Atom_t* source){
     double r = sqrt(SQR(dest->coordinate->x - source->coordinate->x) +
             SQR(dest->coordinate->y - source->coordinate->y));
 
-    result.x = (dest->coordinate->x - source->coordinate->x) / r;
-    result.y = (dest->coordinate->y - source->coordinate->y) / r;
+    result.x = 100 *(dest->coordinate->x - source->coordinate->x) / r;
+    result.y = 100 *(dest->coordinate->y - source->coordinate->y) / r;
 
     return result;
 }
